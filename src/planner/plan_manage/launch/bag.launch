@@ -1,0 +1,16 @@
+<launch>
+  <arg name="drone_id" value="0" />
+
+  <!-- trajectory server -->
+  <node pkg="ego_planner" name="drone_$(arg drone_id)_traj_server" type="traj_server" output="screen">
+    <remap from="position_cmd" to="drone_$(arg drone_id)_planning/pos_cmd"/>
+    <remap from="~planning/bspline" to="drone_$(arg drone_id)_planning/bspline"/>
+    <remap from="~odom_sim_for_fov" to="/drone_0_visual_slam/odom"/>
+    <remap from="~fov_visual" to="drone_$(arg drone_id)_planning/fov_visual"/>
+
+    <param name="traj_server/time_forward" value="1.0" type="double"/>
+    <param name="drone_id" value="0"/>
+  
+  </node>
+
+</launch>

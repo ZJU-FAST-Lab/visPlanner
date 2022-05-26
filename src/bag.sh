@@ -1,0 +1,1 @@
+rosbag record --tcpnodelay /drone_0_ego_planner_node/optimal_list /drone_0_ego_planner_node/traj_yaw_list /drone_0_ego_planner_node/control_points_list /drone_0_ego_planner_node/traj_pos_list /drone_0_ego_planner_node/predict_points_list /map_generator/global_cloud /drone_0_ego_planner_node/debug_control_points_list /drone_0_ego_planner_node/gradient_line
