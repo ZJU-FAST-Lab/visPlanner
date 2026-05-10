@@ -196,6 +196,7 @@ namespace ego_planner
     double feasibility_tolerance_;        // permitted ratio of vel/acc exceeding limits
     double planning_horizen_;
     bool use_distinctive_trajs;
+    bool use_minco{false};
     int drone_id; // single drone: drone_id <= -1, swarm: drone_id >= 0
 
     /* processing time */

@@ -145,6 +145,7 @@
     <param name="manager/feasibility_tolerance" value="0.05" type="double"/>
     <param name="manager/planning_horizon" value="$(arg planning_horizon)" type="double"/>
     <param name="manager/use_distinctive_trajs" value="$(arg use_distinctive_trajs)" type="bool"/>
+    <param name="manager/use_minco" value="false" type="bool"/>
     <param name="manager/drone_id" value="$(arg drone_id)"/>
     <param name="manager/attract_max_dist_threshold" value="$(arg attract_max_dist_threshold)" type="double"/>
     <param name="manager/attract_min_dist_threshold" value="$(arg attract_min_dist_threshold)" type="double"/>

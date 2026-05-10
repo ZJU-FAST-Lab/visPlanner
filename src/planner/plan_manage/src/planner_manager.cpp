@@ -6,6 +6,47 @@
 namespace ego_planner
 {
 
+namespace {
+
+inline double evalMincoPoly(const Eigen::MatrixXd &coeff, int seg, double t)
+{
+  double tt = 1.0;
+  double val = 0.0;
+  for (int i = 0; i < coeff.cols(); ++i)
+  {
+    val += coeff(seg, i) * tt;
+    tt *= t;
+  }
+  return val;
+}
+
+inline double evalMincoDeriv(const Eigen::MatrixXd &coeff, int seg, double t)
+{
+  double tt = 1.0;
+  double val = 0.0;
+  for (int i = 1; i < coeff.cols(); ++i)
+  {
+    val += i * coeff(seg, i) * tt;
+    tt *= t;
+  }
+  return val;
+}
+
+inline double evalMincoAcc(const Eigen::MatrixXd &coeff, int seg, double t)
+{
+  double tt = 1.0;
+  double val = 0.0;
+  for (int i = 2; i < coeff.cols(); ++i)
+  {
+    val += i * (i - 1) * coeff(seg, i) * tt;
+    tt *= t;
+  }
+  return val;
+}
+
+} // namespace
+
+
   // SECTION interfaces for setup and query
 
   EGOPlannerManager::EGOPlannerManager() {}
@@ -23,6 +64,7 @@ namespace ego_planner
     nh.param("manager/control_points_distance", pp_.ctrl_pt_dist, -1.0);
     nh.param("manager/planning_horizon", pp_.planning_horizen_, 5.0);
     nh.param("manager/use_distinctive_trajs", pp_.use_distinctive_trajs, false);
+    nh.param("manager/use_minco", pp_.use_minco, false);
     nh.param("manager/drone_id", pp_.drone_id, -1);
     nh.param("manager/attract_max_dist_threshold", pp_.attract_max_dist_threshold_, 6.0);
     nh.param("manager/attract_min_dist_threshold", pp_.attract_min_dist_threshold_, 6.0);
@@ -41,6 +83,9 @@ namespace ego_planner
     bspline_optimizer_->setEnvironment(grid_map_, obj_predictor_);
     bspline_optimizer_->a_star_.reset(new AStar);
     bspline_optimizer_->a_star_->initGridMap(grid_map_, Eigen::Vector3i(100, 100, 100));
+
+    minco_optimizer_.reset(new MincoOptimizer);
+    minco_optimizer_->setLimits(pp_.max_vel_, pp_.max_acc_);
 
     visualization_ = vis;
 
@@ -257,6 +302,76 @@ namespace ego_planner
       cout << "Close to goal" << endl;
       continous_failures_count_++;
       return false;
+    }
+
+    if (pp_.use_minco)
+    {
+      MincoResult minco_res;
+      const bool minco_ok = minco_optimizer_ && minco_optimizer_->optimize(start_pt, start_vel, start_acc, local_target_pt, local_target_vel, minco_res);
+      if (!minco_ok || minco_res.durations.size() <= 0)
+      {
+        ROS_WARN("[MINCO] optimize failed, fallback to bspline optimizer.");
+      }
+      else
+      {
+        const int seg_num = minco_res.durations.size();
+        const double ts = std::max(0.03, pp_.ctrl_pt_dist / std::max(0.1, pp_.max_vel_));
+
+        vector<Eigen::Vector3d> point_set, start_end_derivatives;
+        point_set.reserve(seg_num * 10 + 1);
+
+        for (int seg = 0; seg < seg_num; ++seg)
+        {
+          const double T = minco_res.durations(seg);
+          if (T <= 1e-3)
+            continue;
+          for (double t = (seg == 0 ? 0.0 : ts); t < T + 1e-6; t += ts)
+          {
+            Eigen::Vector3d pt;
+            pt(0) = evalMincoPoly(minco_res.coeff_x, seg, t);
+            pt(1) = evalMincoPoly(minco_res.coeff_y, seg, t);
+            pt(2) = evalMincoPoly(minco_res.coeff_z, seg, t);
+            point_set.push_back(pt);
+          }
+        }
+
+        if (point_set.size() >= 7)
+        {
+          const double T_last = minco_res.durations(seg_num - 1);
+          Eigen::Vector3d vel_start, vel_end, acc_start, acc_end;
+          vel_start << evalMincoDeriv(minco_res.coeff_x, 0, 0.0),
+                       evalMincoDeriv(minco_res.coeff_y, 0, 0.0),
+                       evalMincoDeriv(minco_res.coeff_z, 0, 0.0);
+          vel_end << evalMincoDeriv(minco_res.coeff_x, seg_num - 1, T_last),
+                     evalMincoDeriv(minco_res.coeff_y, seg_num - 1, T_last),
+                     evalMincoDeriv(minco_res.coeff_z, seg_num - 1, T_last);
+          acc_start << evalMincoAcc(minco_res.coeff_x, 0, 0.0),
+                       evalMincoAcc(minco_res.coeff_y, 0, 0.0),
+                       evalMincoAcc(minco_res.coeff_z, 0, 0.0);
+          acc_end << evalMincoAcc(minco_res.coeff_x, seg_num - 1, T_last),
+                     evalMincoAcc(minco_res.coeff_y, seg_num - 1, T_last),
+                     evalMincoAcc(minco_res.coeff_z, seg_num - 1, T_last);
+
+          start_end_derivatives.push_back(vel_start);
+          start_end_derivatives.push_back(vel_end);
+          start_end_derivatives.push_back(acc_start);
+          start_end_derivatives.push_back(acc_end);
+
+          Eigen::MatrixXd ctrl_pts;
+          UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
+          bspline_optimizer_->setPosControlPointsAndTs(ctrl_pts, ts);
+          UniformBspline pos(ctrl_pts, 3, ts);
+          pos.setPhysicalLimits(pp_.max_vel_, pp_.max_acc_, pp_.feasibility_tolerance_);
+          updateTrajInfo(pos, ros::Time::now());
+          continous_failures_count_ = 0;
+          ROS_INFO("[MINCO] trajectory generated and converted to bspline control points.");
+          return true;
+        }
+        else
+        {
+          ROS_WARN("[MINCO] sampled points are too few, fallback to bspline optimizer.");
+        }
+      }
     }
 
     bspline_optimizer_->setLocalTargetPt( local_target_pt );

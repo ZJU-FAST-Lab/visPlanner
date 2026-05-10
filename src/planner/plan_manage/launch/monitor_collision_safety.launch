@@ -1,0 +1,27 @@
+<launch>
+  <arg name="map_topic" default="/global_map"/>
+  <arg name="odom0_topic" default="/drone_0_visual_slam/odom"/>
+  <arg name="odom1_topic" default="/drone_1_visual_slam/odom"/>
+
+  <arg name="drone_radius" default="0.35"/>
+  <arg name="obstacle_clearance" default="0.70"/>
+  <arg name="inter_drone_clearance" default="1.20"/>
+
+  <arg name="check_rate" default="2.0"/>
+  <arg name="point_stride" default="5"/>
+  <arg name="max_check_distance" default="8.0"/>
+
+  <node pkg="ego_planner" type="collision_safety_monitor.py" name="collision_safety_monitor" output="screen">
+    <param name="map_topic" value="$(arg map_topic)"/>
+    <param name="odom0_topic" value="$(arg odom0_topic)"/>
+    <param name="odom1_topic" value="$(arg odom1_topic)"/>
+
+    <param name="drone_radius" value="$(arg drone_radius)"/>
+    <param name="obstacle_clearance" value="$(arg obstacle_clearance)"/>
+    <param name="inter_drone_clearance" value="$(arg inter_drone_clearance)"/>
+
+    <param name="check_rate" value="$(arg check_rate)"/>
+    <param name="point_stride" value="$(arg point_stride)"/>
+    <param name="max_check_distance" value="$(arg max_check_distance)"/>
+  </node>
+</launch>

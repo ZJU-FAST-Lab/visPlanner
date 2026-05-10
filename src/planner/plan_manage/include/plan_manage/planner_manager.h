@@ -13,6 +13,7 @@
 #include <traj_utils/planning_visualization.h>
 #include <bezier_predict/predictor.h>
 #include <plan_manage/tracking_astar.hpp>
+#include <minco_opt/minco_optimizer.h>
 namespace ego_planner
 {
 
@@ -62,6 +63,7 @@ namespace ego_planner
     fast_planner::ObjPredictor::Ptr obj_predictor_;    
     SwarmTrajData swarm_trajs_buf_;
     BsplineOptimizer::Ptr bspline_optimizer_;
+    MincoOptimizer::Ptr minco_optimizer_;
     Predictor::Ptr bezier_predictor_;
     unique_ptr<KinodynamicAstar> kino_path_finder_;
 

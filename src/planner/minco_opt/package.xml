@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>minco_opt</name>
+  <version>0.0.0</version>
+  <description>MINCO trajectory optimization module for visPlanner.</description>
+
+  <maintainer email="devnull@example.com">visPlanner</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>roscpp</build_depend>
+  <build_depend>traj_utils</build_depend>
+  <build_depend>plan_env</build_depend>
+
+  <build_export_depend>roscpp</build_export_depend>
+  <build_export_depend>traj_utils</build_export_depend>
+  <build_export_depend>plan_env</build_export_depend>
+
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>traj_utils</exec_depend>
+  <exec_depend>plan_env</exec_depend>
+
+  <export/>
+</package>

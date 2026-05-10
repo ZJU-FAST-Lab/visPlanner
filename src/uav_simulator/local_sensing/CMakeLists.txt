@@ -5,23 +5,23 @@ SET(CMAKE_BUILD_TYPE Release) # Release, RelWithDebInfo
 ADD_COMPILE_OPTIONS(-std=c++11 )
 ADD_COMPILE_OPTIONS(-std=c++14 )
 
-#set(ENABLE_CUDA false)
-set(ENABLE_CUDA true)
+option(ENABLE_CUDA "Enable CUDA accelerated depth renderer (set ON only when CUDA toolkit+GPU are ready)" OFF)
+set(CUDA_ARCH "75" CACHE STRING "NVIDIA GPU compute capability, e.g. 61/75/86")
 
 if(ENABLE_CUDA)
+  message(STATUS "local_sensing_node: ENABLE_CUDA=ON, CUDA_ARCH=${CUDA_ARCH}")
   find_package(CUDA REQUIRED)
-  SET(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-O3 -use_fast_math)
-  set(CUDA_NVCC_FLAGS 
-#       -gencode arch=compute_20,code=sm_20;
-#       -gencode arch=compute_20,code=sm_21;
-#       -gencode arch=compute_30,code=sm_30;
-#       -gencode arch=compute_35,code=sm_35;
-#       -gencode arch=compute_50,code=sm_50;
-#       -gencode arch=compute_52,code=sm_52; 
-      # -gencode arch=compute_60,code=sm_60;
-      # -gencode arch=compute_61,code=sm_61;
-      -gencode arch=compute_75,code=sm_75;
-  ) 
+
+  # CUDA toolkit bundled with older ROS stacks may reject modern GCC by default.
+  # Allow unsupported host compilers explicitly so catkin builds can proceed on newer distros.
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 8.0)
+    list(APPEND CUDA_NVCC_FLAGS --allow-unsupported-compiler)
+    message(WARNING "GCC ${CMAKE_CXX_COMPILER_VERSION} detected; enabling NVCC flag --allow-unsupported-compiler")
+  endif()
+
+  list(APPEND CUDA_NVCC_FLAGS -O3 -use_fast_math)
+  # NOTE: set CUDA_ARCH according to your GPU. Example: 61(TX2/GTX10), 75(Turing), 86(Ampere)
+  list(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_${CUDA_ARCH},code=sm_${CUDA_ARCH})
 
   SET(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
@@ -65,6 +65,7 @@ if(ENABLE_CUDA)
     ${catkin_LIBRARIES}
   )
 else(ENABLE_CUDA)
+  message(WARNING "local_sensing_node: ENABLE_CUDA=OFF, using CPU pointcloud renderer.")
   find_package(Eigen3 REQUIRED)
   find_package(catkin REQUIRED COMPONENTS
       roscpp roslib cmake_modules pcl_ros sensor_msgs geometry_msgs nav_msgs quadrotor_msgs)

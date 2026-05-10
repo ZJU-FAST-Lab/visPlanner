@@ -1,0 +1,15 @@
+<launch>
+  <arg name="topic_a" default="/drone_0_planning/bspline_minco"/>
+  <arg name="topic_b" default="/drone_0_planning/bspline_bspline"/>
+  <arg name="sample_dt" default="0.05"/>
+  <arg name="enable_csv" default="true"/>
+  <arg name="csv_path" default="/tmp/traj_compare.csv"/>
+
+  <node pkg="ego_planner" type="traj_compare_node" name="traj_compare_node" output="screen">
+    <param name="compare/topic_a" value="$(arg topic_a)"/>
+    <param name="compare/topic_b" value="$(arg topic_b)"/>
+    <param name="compare/sample_dt" value="$(arg sample_dt)"/>
+    <param name="compare/enable_csv" value="$(arg enable_csv)"/>
+    <param name="compare/csv_path" value="$(arg csv_path)"/>
+  </node>
+</launch>
